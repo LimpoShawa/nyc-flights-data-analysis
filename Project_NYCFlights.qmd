@@ -1,0 +1,428 @@
+---
+title: "Our practice project"
+author: "LIMPO SHAWA"
+format:   
+  html: # Below are some YAML configurations:
+    embed-resources: true   # The html will have all figures embedded. 
+    number-sections: true
+---
+
+This Homework Project works with dataframes in the package `nycflights13` about flights, specifically a sample of domestic flights that departed from the three major New York City airports in 2013. 
+
+# Data overview
+
+## Package loading
+
+```{r}
+#| label: packages-data
+#| message: false  # We do not want to see the tidyverse loading flightgsmessage in our document
+#| echo: false
+library(tidyverse)
+library(patchwork)            # Install this package before. It helps to combine different plots.
+library(nycflights13)
+```
+
+## Package overview
+
+- The data package `nycflights13` package contains five tabular data frames. In total there is information about:
+  - `r nrow(airlines)` **airlines**
+  - `r nrow(airports)` **airports**
+  - `r nrow(planes)` **planes**
+  - `r nrow(flights)` **flights**
+
+
+The core dataframe `flights` has the following variables: 
+
+`year`, `month`, `day`: **Date** of departure.  
+`dep_time`, `arr_time`: Actual **departure** and **arrival** times (format HHMM or HMM), local time zone.  
+`sched_dep_time`, `sched_arr_time`: **Scheduled departure** and **arrival** times (format HHMM or HMM), local time zone.  
+`dep_delay`, `arr_delay`: **Departure** and **arrival delays**, in minutes. 
+Negative times represent early departures/arrivals.  
+`carrier`: Two letter **carrier** abbreviation. See `airlines`-dataframe to get the full name.  
+
+*Remove this text and continue the variable description.*
+
+# Basic data visualization
+
+```{r}
+#| label: flightsorigin
+ggplot(data = flights, mapping = aes(x = origin)) + 
+  geom_bar()
+```
+In the `flights` dataframe, the `EWR` airport has **`r nrow(filter(flights, origin=="EWR"))`** rows, the `JFK` has **`r nrow(filter(flights, origin=="JFK"))`** rows, and the LGA airport has **`r nrow(filter(flights, origin=="LGA"))`** rows, resulting in a total of **`r nrow(flights)`** flights.
+
+
+```{r}
+#| label: flightsdistance
+ggplot(data = flights, mapping = aes(x = distance)) + 
+  geom_histogram(binwidth = 50, fill = "pink", color = "black") +
+  labs(
+    title = "Distribution of Flight Distances",
+    x = "Distance (miles)",
+    y = "Number of Flights"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray80"),
+    panel.grid.minor = element_line(color = "gray90")
+  )
+
+```
+
+
+```{r}
+#| label: distributions
+# Scatter plot of seats
+g1 <- ggplot(data = planes, mapping = aes(y = seats, x = 0)) + 
+  geom_point(color = "pink") +
+  labs(title = "Scatter Plot", x = "", y = "Seats") +
+  theme_minimal()
+
+# Boxplot of seats
+g2 <- ggplot(data = planes, mapping = aes(y = seats)) + 
+  geom_boxplot(fill = "pink", color = "black") +
+  labs(title = "Boxplot", y = "Seats", x = "") +
+  theme_minimal()
+
+# Histogram of seats
+g3 <- ggplot(data = planes, mapping = aes(y = seats)) +
+  geom_histogram(binwidth = 10, fill = "pink", color = "black") +
+  labs(title = "Histogram", y = "Number of Planes", x = "Seats") +
+  theme_minimal()
+
+# Combine the three plots
+g1 + g2 + g3
+```
+The scatter plot (g1) shows each individual observation of seats in planes.  
+The boxplot (g2) summarizes the distribution with median, quartiles, and outliers.  
+The histogram (g3) shows the overall frequency distribution of seats. Each visualization has its advantages depending on what we want to see.
+
+
+```{r}
+#| label: engine-seats
+ggplot(data = planes, mapping = aes(x = engine, y = seats)) +
+  geom_boxplot(fill = "pink", color = "black") +
+  labs(
+    title = "Seats by Engine Type",
+    x = "Engine Type",
+    y = "Seats"
+  ) +
+  theme_minimal()
+
+```
+The boxplot shows how the number of seats varies by engine type.  
+We can see which engine types typically have more or fewer seats and how spread out the seating capacities are.
+
+
+
+```{r}
+#| label: delays
+library(dplyr)
+
+# Take a random sample of 5,000 flights
+sample_flights <- sample_n(flights, 5000)
+
+# Scatter plot of departure vs arrival delays with different colors for airports
+ggplot(data = sample_flights, mapping = aes(x = dep_delay, y = arr_delay, color = origin)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c("EWR" = "hotpink", "JFK" = "blue", "LGA" = "green")) +
+  labs(
+    title = "Departure vs Arrival Delay",
+    x = "Departure Delay (minutes)",
+    y = "Arrival Delay (minutes)",
+    color = "Origin Airport"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+#| label: airportlocations
+ggplot(data = airports, mapping = aes(x = lon, y = lat, color =
+tzone)) +
+geom_point(alpha = 0.7) +
+coord_quickmap () +
+labs (
+title = "Airports by Longitude/Latitude and Time Zone",
+x = "Longitude",
+y = "Latitude",
+color = "Time zone"
+)
+```
+
+
+# Data Wrangling
+
+```{r}
+#| label: flightsaveragespeed
+flights |> 
+  filter(!is.na(air_time) & air_time > 0) |>  # Remove flights with missing or zero airtime
+  mutate(speed = distance / (air_time / 60) * 1.60934) |>  # Convert miles/min to km/h
+  ggplot(aes(x = speed)) +
+  geom_histogram(binwidth = 50, fill = "pink", color = "black") +
+  labs(
+    title = "Distribution of Flight Speeds",
+    x = "Speed (km/h)",
+    y = "Number of Flights"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+#| label: filtering
+library(knitr)
+
+flights_filtered <- flights |>
+  filter(arr_delay >= 120)
+
+flights_filtered |>
+  select(year, month, day, dep_time, arr_time, carrier, dest, arr_delay) |>
+  head(10) |>
+  kable(caption = "Flights with arrival delay of 2 or more hours")
+```
+
+
+```{r}
+#| label: summarizing
+library(knitr)
+flights |>
+  summarize(`Average Departure Delay (minutes)` = round(mean(dep_delay, na.rm = TRUE), 0), 
+            .by = origin) |>
+  kable(caption = "Average Departure Delay per NYC Airport")
+```
+
+# Data Audit
+
+```{r}
+#| label: strangeairportlocations
+library(dplyr)
+library(knitr)
+library(ggplot2)
+
+# Filter and arrange suspect airports
+suspects <- airports |> 
+  filter(lon > 0) |>                  
+  select(faa, name, lat, lon, tzone) |>
+  arrange(lon)
+
+# Display a neat table
+kable(suspects, caption = "Airports with positive longitude (audit targets)")
+
+# Plot suspect airports
+ggplot(suspects, aes(lon, lat, label = faa)) +
+  geom_point(size = 3, color = "red") +   
+  geom_text(nudge_y = 1, check_overlap = TRUE) +
+  coord_quickmap() +
+  labs(
+    title = "Suspect airport locations (positive longitude)",
+    x = "Longitude",
+    y = "Latitude"
+  )
+```
+
+```{r}
+#| label: flights-per-airline
+library(dplyr)
+library(ggplot2)
+library(forcats)  
+
+
+flights_count <- flights |>
+  count(carrier) |>
+  left_join(airlines, by = "carrier") |>
+  arrange(n)
+
+# Plot horizontal bar chart
+ggplot(flights_count, aes(x = n, y = fct_reorder(name, n))) +
+  geom_col(fill = "pink") +   
+  labs(
+    title = "Number of Flights per Airline",
+    x = "Number of Flights",
+    y = "Airline"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#| label: mean-dep-delay
+
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+# Average departure delay per airline
+delay_avg <- flights |>
+  group_by(carrier) |>
+  summarize(mean_dep_delay = mean(dep_delay, na.rm = TRUE)) |>
+  left_join(airlines, by = "carrier")
+
+# Plot horizontal bar chart
+ggplot(delay_avg, aes(x = mean_dep_delay, y = fct_reorder(name, mean_dep_delay))) +
+  geom_col(fill = "pink") +
+  labs(
+    title = "Mean Departure Delay per Airline",
+    x = "Mean Departure Delay (minutes)",
+    y = "Airline"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#| label: side-by-side-delays
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+# Calculate mean departure and arrival delay per airline
+delay_side <- flights |>
+  group_by(carrier) |>
+  summarize(
+    mean_dep_delay = mean(dep_delay, na.rm = TRUE),
+    mean_arr_delay = mean(arr_delay, na.rm = TRUE)
+  ) |>
+  left_join(airlines, by = "carrier") |>
+  pivot_longer(
+    cols = c(mean_dep_delay, mean_arr_delay),
+    names_to = "delay_type",
+    values_to = "mean_delay"
+  )
+
+# Plot side-by-side bar chart
+ggplot(delay_side, aes(x = mean_delay, y = fct_reorder(name, mean_delay), fill = delay_type)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(
+    values = c("mean_dep_delay" = "pink", "mean_arr_delay" = "hotpink"),
+    labels = c("Departure Delay", "Arrival Delay")
+  ) +
+  labs(
+    title = "Mean Departure and Arrival Delay per Airline",
+    x = "Mean Delay (minutes)",
+    y = "Airline",
+    fill = "Delay Type"
+  ) +
+  theme_minimal()
+```
+**Note:** Some delays are negative because they represent flights that departed or arrived **earlier than scheduled**.  
+- Positive values → late  
+- Zero → on time  
+- Negative values → early
+
+```{r}
+#| label: planes-by-year
+library(dplyr)
+library(ggplot2)
+
+planes_data <- flights |>
+  left_join(planes |> rename(manufacture_year = year), by = "tailnum") |>
+  left_join(airports, by = c("origin" = "faa"))
+
+planes_count <- planes_data |>
+  filter(!is.na(manufacture_year)) |>
+  group_by(name, manufacture_year) |>
+  summarize(num_flights = n(), .groups = "drop")
+
+ggplot(planes_count, aes(x = manufacture_year, y = num_flights)) +
+  geom_col(fill = "hotpink") +
+  facet_wrap(~name) +
+  labs(
+    title = "Number of Departing Planes by Year of Manufacture",
+    x = "Year Manufactured",
+    y = "Number of Flights"
+  ) +
+  scale_x_continuous(limits = c(1950, 2020)) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.major = element_line(color = "gray90")
+  )
+```
+
+```{r}
+#| label: weekly-precipitation
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# Lookup full airport names
+airports_lookup <- airports |>
+  dplyr::select(faa, name) |>
+  dplyr::rename(origin_name = name)
+
+# Aggregate weekly precipitation
+weekly_precip <- weather |>
+  dplyr::mutate(
+    date = as.Date(paste(year, month, day, sep = "-")),
+    week = lubridate::week(date)
+  ) |>
+  dplyr::left_join(airports_lookup, by = c("origin" = "faa")) |>
+  dplyr::summarize(total_precip = sum(precip, na.rm = TRUE), .by = c(origin_name, week))
+
+ggplot(weekly_precip, aes(x = week, y = total_precip, color = origin_name)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_manual(values = c(
+    "John F Kennedy Intl" = "hotpink",
+    "La Guardia" = "plum1",
+    "Newark Liberty Intl" = "rosybrown1"
+  )) +
+  labs(
+    title = "Total Weekly Precipitation at NYC Airports (2013)",
+    x = "Week of Year",
+    y = "Total Precipitation (inches)",
+    color = "Airport"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+#| label: most-flights
+
+library(dplyr)
+library(ggplot2)
+
+# Count flights per airline
+flights_per_airline <- flights |>
+  left_join(airlines, by = "carrier") |>
+  group_by(name) |>
+  summarize(total_flights = n(), .groups = "drop")
+
+ggplot(flights_per_airline, aes(x = reorder(name, total_flights), y = total_flights, fill = name)) +
+  geom_col(linewidth = 0.2, color = "black") +  
+  coord_flip() +
+  scale_fill_manual(values = rep("pink", nrow(flights_per_airline))) + 
+  labs(
+    title = "Number of Flights per Airline (2013)",
+    x = "Airline",
+    y = "Total Flights",
+    fill = "Airline"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.y = element_text(face = "bold")
+  )
+
+# Show top airline as inline code
+top_airline <- flights_per_airline |>
+  slice_max(total_flights, n = 1)
+
+top_airline_name <- top_airline$name
+top_airline_count <- top_airline$total_flights
+
+top_airline_name
+top_airline_count
+```
+## Your Own Data Science Question
+
+**Question:** Which airline operated the most flights from NYC airports in 2013?
+
+The bar chart above shows the total number of flights for each airline.  
+The airline with the most flights in 2013 was **United Air Lines Inc.** with a total of **58,665** flights.
+
+**Interpretation:**  
+This shows that **United Air Lines Inc.** was the busiest airline in NYC in 2013. Choosing flights with this airline might increase options and frequency, but could also mean busier airports and potentially more delays.
