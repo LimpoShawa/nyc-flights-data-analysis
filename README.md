@@ -6,6 +6,12 @@ This project explores flight data from the three major New York City airports in
 
 Using R, data wrangling, data visualization, and data-quality auditing, the analysis demonstrates how operational flight data can be transformed into meaningful insights about a complex transportation system.
 
+
+### 🔎 View the Full Analysis
+
+**[View the interactive NYC Flights analysis](https://limposhawa.github.io/nyc-flights-data-analysis/)**
+
+
 ## The Problem
 
 Airports and airlines generate large amounts of operational data every day. Analysing this data can help reveal patterns in flight activity, delays, airline operations, aircraft characteristics, and other factors that affect air transportation.
